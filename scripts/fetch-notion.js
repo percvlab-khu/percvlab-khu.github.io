@@ -16,6 +16,7 @@ const api = require('./lib/notion-api');
 const ROOT = path.join(__dirname, '..');
 const CACHE = path.join(ROOT, '.cache');
 const IMG_DIR = path.join(CACHE, 'images');
+const FILE_DIR = path.join(CACHE, 'files'); // 첨부파일. 암호화 전까지 배포되지 않는다.
 const MANIFEST = path.join(CACHE, 'asset-manifest.json');
 
 const loadDbIds = () => {
@@ -58,46 +59,68 @@ const extOf = (url) => {
 const keyOf = (pageId) => crypto.createHash('sha1').update(pageId).digest('hex').slice(0, 12);
 
 // 페이지가 마지막 수정 이후 그대로면 다시 받지 않는다.
-class ImageCache {
+// 이미지(공개 배포)와 첨부파일(암호화 대상)을 각각 다른 디렉토리에 둔다.
+class AssetCache {
   constructor() {
     this.manifest = readManifest();
     this.next = {};
     this.hits = 0;
     this.misses = 0;
     fs.mkdirSync(IMG_DIR, { recursive: true });
+    fs.mkdirSync(FILE_DIR, { recursive: true });
   }
 
-  fresh(pageId, lastEdited) {
+  entry(pageId, lastEdited) {
+    if (!this.next[pageId]) this.next[pageId] = { lastEdited, files: [], attachments: [] };
+    return this.next[pageId];
+  }
+
+  fresh(pageId, lastEdited, kind) {
     const e = this.manifest[pageId];
-    return e && e.lastEdited === lastEdited && e.files.every((f) => fs.existsSync(path.join(IMG_DIR, f)));
+    if (!e || e.lastEdited !== lastEdited) return false;
+    const dir = kind === 'files' ? IMG_DIR : FILE_DIR;
+    const list = e[kind] || [];
+    return list.every((f) => fs.existsSync(path.join(dir, kind === 'files' ? f : f.stored)));
   }
 
-  cached(pageId) {
-    return this.manifest[pageId].files;
-  }
-
-  // url 목록을 받아 로컬 파일명 배열을 돌려준다.
-  async fetch(pageId, lastEdited, urls) {
-    if (!urls.length) {
-      this.next[pageId] = { lastEdited, files: [] };
-      return [];
-    }
-    if (this.fresh(pageId, lastEdited)) {
+  // 이미지: url 배열 -> 로컬 파일명 배열
+  async fetchImages(pageId, lastEdited, urls) {
+    const e = this.entry(pageId, lastEdited);
+    if (!urls.length) return [];
+    if (this.fresh(pageId, lastEdited, 'files')) {
       this.hits++;
-      const files = this.cached(pageId);
-      this.next[pageId] = { lastEdited, files };
-      return files;
+      e.files = this.manifest[pageId].files;
+      return e.files;
     }
-    const files = [];
     for (const [i, url] of urls.entries()) {
       const name = `${keyOf(pageId)}-${i}${extOf(url)}`;
       await download(url, path.join(IMG_DIR, name));
       await api.sleep(120);
-      files.push(name);
+      e.files.push(name);
       this.misses++;
     }
-    this.next[pageId] = { lastEdited, files };
-    return files;
+    return e.files;
+  }
+
+  // 첨부파일: [{url, name}] -> [{stored, name, size}]
+  // 원본 파일명은 그대로 보존하되, 저장은 해시 이름으로 한다.
+  async fetchAttachments(pageId, lastEdited, items) {
+    const e = this.entry(pageId, lastEdited);
+    if (!items.length) return [];
+    if (this.fresh(pageId, lastEdited, 'attachments')) {
+      this.hits++;
+      e.attachments = this.manifest[pageId].attachments;
+      return e.attachments;
+    }
+    for (const [i, it] of items.entries()) {
+      const stored = `${keyOf(pageId)}-a${i}`;
+      const dest = path.join(FILE_DIR, stored);
+      await download(it.url, dest);
+      await api.sleep(120);
+      e.attachments.push({ stored, name: it.name, size: fs.statSync(dest).size });
+      this.misses++;
+    }
+    return e.attachments;
   }
 
   save() {
@@ -117,6 +140,10 @@ const V = {
   email: (p) => p?.email ?? null,
   date: (p) => p?.date?.start ?? null,
   files: (p) => (p?.files || []).map((f) => (f.type === 'external' ? f.external.url : f.file.url)),
+  filesFull: (p) =>
+    (p?.files || [])
+      .filter((f) => f.type === 'file') // 외부 링크는 내려받지 않는다
+      .map((f) => ({ url: f.file.url, name: f.name })),
 };
 
 const blocksOf = async (blockId) => {
@@ -133,14 +160,14 @@ const blocksOf = async (blockId) => {
 
 async function fetchAll(configPageId) {
   const ids = loadDbIds();
-  const cache = new ImageCache();
+  const cache = new AssetCache();
   const q = (name) => api.queryAll(ids[name].dataSourceId);
 
   // --- Members ---
   const memberRows = await q('Members');
   const members = [];
   for (const r of memberRows) {
-    const photos = await cache.fetch(r.id, r.last_edited_time, V.files(r.properties.Photo).slice(0, 1));
+    const photos = await cache.fetchImages(r.id, r.last_edited_time, V.files(r.properties.Photo).slice(0, 1));
     members.push({
       name: V.title(r.properties.Name),
       role: V.select(r.properties.Role), // 그룹핑·정렬용
@@ -183,7 +210,7 @@ async function fetchAll(configPageId) {
   // --- Research Areas ---
   const researchAreas = [];
   for (const r of await q('Research Areas')) {
-    const imgs = await cache.fetch(r.id, r.last_edited_time, V.files(r.properties.Image).slice(0, 1));
+    const imgs = await cache.fetchImages(r.id, r.last_edited_time, V.files(r.properties.Image).slice(0, 1));
     researchAreas.push({
       title: V.title(r.properties.Title),
       description: V.text(r.properties.Description),
@@ -196,7 +223,7 @@ async function fetchAll(configPageId) {
   // --- Photos ---
   const photos = [];
   for (const r of await q('Photos')) {
-    const imgs = await cache.fetch(r.id, r.last_edited_time, V.files(r.properties.Image).slice(0, 1));
+    const imgs = await cache.fetchImages(r.id, r.last_edited_time, V.files(r.properties.Image).slice(0, 1));
     photos.push({
       title: V.title(r.properties.Title),
       date: V.date(r.properties.Date),
@@ -216,6 +243,7 @@ async function fetchAll(configPageId) {
       date: V.date(r.properties.Date),
       author: V.text(r.properties.Author),
       driveLink: V.url(r.properties['Drive Link']),
+      attachments: await cache.fetchAttachments(r.id, r.last_edited_time, V.filesFull(r.properties.Files)),
       blocks: await blocksOf(r.id),
     });
   }
@@ -228,7 +256,7 @@ async function fetchAll(configPageId) {
   return { siteConfig, news, researchAreas, members, publications, photos, membersOnly, stats };
 }
 
-module.exports = { fetchAll, IMG_DIR, CACHE };
+module.exports = { fetchAll, IMG_DIR, FILE_DIR, CACHE };
 
 if (require.main === module) {
   const pageId = process.argv[2] || process.env.NOTION_CONFIG_PAGE_ID;

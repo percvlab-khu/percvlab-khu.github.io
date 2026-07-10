@@ -53,13 +53,34 @@ jobs:
 
       - name: Verify output
         run: |
+          set -euo pipefail
           test -f _site/index.html
           test -f _site/members/index.html
           test -f _site/publications/index.html
           test -s _site/data/lab.enc.json
+
           # 암호문에 평문이 새어나오지 않았는지 확인한다
           ! grep -qi 'drive.google.com' _site/data/lab.enc.json
+
+          # 첨부파일은 반드시 암호문이어야 한다. set -e에 기대지 않고 명시적으로 실패시킨다.
+          for f in _site/data/files/*.enc; do
+            [ -e "$f" ] || break
+            if head -c 512 "$f" | grep -qaE '%PDF|^PK|JFIF|GIF8'; then
+              echo "평문 첨부가 배포될 뻔했다: $f"
+              exit 1
+            fi
+            size=$(stat -c%s "$f")
+            if [ "$size" -le 28 ]; then   # IV 12바이트 + 태그 16바이트
+              echo "첨부가 너무 짧다 (암호화 실패 의심): $f ($size B)"
+              exit 1
+            fi
+          done
+
+          # 캐시(평문 원본)가 배포물에 섞여 들어가지 않았는지
+          ! find _site -name 'asset-manifest.json' | grep -q .
+
           echo "산출물 $(find _site -type f | wc -l)개, $(du -sh _site | cut -f1)"
+          echo "암호화 첨부 $(find _site/data/files -name '*.enc' 2>/dev/null | wc -l)개"
 
       - uses: actions/upload-pages-artifact@v5
         with:

@@ -7,7 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { fetchAll, IMG_DIR } = require('./fetch-notion');
+const { fetchAll, IMG_DIR, FILE_DIR } = require('./fetch-notion');
 const { encryptLab } = require('./encrypt-lab');
 const pages = require('../templates/pages');
 
@@ -62,7 +62,7 @@ async function build(configPageId) {
   let lab = null;
   const password = process.env.LAB_PASSWORD;
   if (password) {
-    lab = encryptLab(data.membersOnly, SITE, password);
+    lab = encryptLab(data.membersOnly, SITE, password, FILE_DIR);
   } else {
     console.warn('경고: LAB_PASSWORD가 없어 Members Only를 건너뛴다.');
     write('lab/index.html', '<!doctype html><meta name="robots" content="noindex"><title>Members Only</title><p>Not built.</p>');
@@ -100,7 +100,7 @@ if (require.main === module) {
       console.log(`  이미지 캐시 적중 ${data.stats.hits} / 새로 받음 ${data.stats.misses}`);
       console.log(`  origin ${origin}`);
       console.log(`  CNAME  ${customDomain || '(없음 — github.io로 배포)'}`);
-      console.log(`  lab    ${lab ? `${lab.count}개 글, 암호문 ${lab.bytes}B` : '건너뜀'}`);
+      console.log(`  lab    ${lab ? `글 ${lab.count}개, 첨부 ${lab.fileCount}개 (${(lab.fileBytes/1024).toFixed(0)}KB)` : '건너뜀'}`);
     })
     .catch((e) => {
       console.error('빌드 실패:', e.message);

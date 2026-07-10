@@ -243,6 +243,17 @@ h3 { font-size: 1.15rem; margin: 32px 0 12px; }
 .lab-item h3 { margin: 0; font-size: 1.05rem; }
 .lab-item time { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lab-item .drive { font-size: 0.88rem; margin: 10px 0 0; }
+
+.attachments { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
+.attachments li { display: flex; align-items: center; gap: 10px; }
+.attachments .size { color: var(--muted); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+button.attach {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  padding: 7px 13px; border-radius: 7px; cursor: pointer; font-size: 0.88rem;
+  text-align: left; max-width: 100%; overflow-wrap: anywhere;
+}
+button.attach:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+button.attach:disabled { opacity: 0.6; cursor: progress; }
 .pub-year .count, .member-grid + h2 .count { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
 
 /* --- 푸터 --- */

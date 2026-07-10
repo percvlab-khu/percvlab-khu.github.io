@@ -13,11 +13,14 @@
 
   const b64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
+  // 파생 키는 메모리에만 둔다. 첨부파일 복호화에 재사용하므로 PBKDF2는 한 번만 돈다.
+  let labKey = null;
+
   async function decrypt(enc, password) {
     const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, [
       'deriveKey',
     ]);
-    const key = await crypto.subtle.deriveKey(
+    labKey = await crypto.subtle.deriveKey(
       { name: 'PBKDF2', salt: b64(enc.kdf.salt), iterations: enc.kdf.iterations, hash: enc.kdf.hash },
       material,
       { name: 'AES-GCM', length: 256 },
@@ -25,8 +28,45 @@
       ['decrypt']
     );
     // 태그 검증에 실패하면 예외가 난다. 그것이 곧 비밀번호 검증이다.
-    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(enc.iv) }, key, b64(enc.ct));
+    const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(enc.iv) }, labKey, b64(enc.ct));
     return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  const KB = 1024;
+  const fmtSize = (n) =>
+    n < KB ? `${n} B` : n < KB * KB ? `${(n / KB).toFixed(0)} KB` : `${(n / KB / KB).toFixed(1)} MB`;
+
+  // Notion이 준 이름을 그대로 믿지 않는다. 경로 구분자를 지운다.
+  const safeName = (name) => (name || 'download').replace(/[/\\]/g, '_').slice(0, 120);
+
+  // 첨부파일은 [IV(12바이트) || 암호문+태그] 원시 바이너리다.
+  async function fetchAndDecrypt(url) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`파일을 불러오지 못했습니다 (${res.status})`);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.length < 29) throw new Error('파일이 손상되었습니다.');
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.subarray(0, 12) }, labKey, buf.subarray(12));
+  }
+
+  async function downloadAttachment(att, btn) {
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '복호화 중…';
+    try {
+      const plain = await fetchAndDecrypt(att.path);
+      const url = URL.createObjectURL(new Blob([plain]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = safeName(att.name);
+      a.click();
+      URL.revokeObjectURL(url);
+      btn.textContent = label;
+    } catch (e) {
+      btn.textContent = '실패 — 다시 시도';
+      console.error(e);
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   const fmt = (iso) =>
@@ -58,6 +98,28 @@
       art.append(body);
     }
 
+    // 암호화된 첨부파일. 클릭할 때 그 파일만 받아 복호화한다.
+    if (item.attachments && item.attachments.length) {
+      const ul = document.createElement('ul');
+      ul.className = 'attachments';
+      for (const att of item.attachments) {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'attach';
+        btn.textContent = `⬇ ${att.name}`;
+        btn.addEventListener('click', () => downloadAttachment(att, btn));
+
+        const size = document.createElement('span');
+        size.className = 'size';
+        size.textContent = fmtSize(att.size);
+
+        li.append(btn, size);
+        ul.append(li);
+      }
+      art.append(ul);
+    }
+
     if (item.driveLink) {
       const p = document.createElement('p');
       p.className = 'drive';
@@ -65,7 +127,7 @@
       a.href = item.driveLink;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
-      a.textContent = '📎 첨부파일 (Google Drive)';
+      a.textContent = '📎 Google Drive에서 열기';
       p.append(a);
       art.append(p);
     }
