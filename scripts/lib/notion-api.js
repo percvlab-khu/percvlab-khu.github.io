@@ -8,6 +8,7 @@
 // 통합(integration)을 상위 페이지에 연결하지 않으면 모든 호출이 404를 반환한다.
 
 const https = require('https');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -138,4 +139,81 @@ async function resolveDataSource(databaseId, token = readToken()) {
 const createRow = (dataSourceId, properties, token = readToken()) =>
   call('POST', '/pages', { parent: { type: 'data_source_id', data_source_id: dataSourceId }, properties }, token);
 
-module.exports = { VERSION, readToken, call, queryAll, createDatabase, resolveDataSource, createRow, text, sleep };
+const updatePage = (pageId, properties, token = readToken()) => call('PATCH', `/pages/${pageId}`, { properties }, token);
+
+const appendBlocks = (blockId, children, token = readToken()) =>
+  call('PATCH', `/blocks/${blockId}/children`, { children }, token);
+
+const createPage = (parentPageId, title, children = [], token = readToken()) =>
+  call(
+    'POST',
+    '/pages',
+    { parent: { type: 'page_id', page_id: parentPageId }, properties: { title: { title: text(title) } }, children },
+    token
+  );
+
+// 파일 업로드는 두 단계다. 객체를 만들고, 그 id로 바이트를 보낸다.
+// 업로드된 파일은 1시간 안에 페이지에 첨부해야 한다.
+function sendMultipart(uploadId, filename, contentType, buffer, token) {
+  const boundary = `----percvlab${crypto.randomBytes(16).toString('hex')}`;
+  const head = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\n` +
+      `Content-Type: ${contentType}\r\n\r\n`
+  );
+  const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+  const body = Buffer.concat([head, buffer, tail]);
+
+  const options = {
+    method: 'POST',
+    hostname: 'api.notion.com',
+    path: `/v1/file_uploads/${uploadId}/send`,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Notion-Version': VERSION,
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
+      'Content-Length': body.length,
+    },
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => {
+        const t = Buffer.concat(chunks).toString('utf8');
+        if (res.statusCode >= 400) return reject(new Error(`파일 전송 실패 (HTTP ${res.statusCode}): ${t.slice(0, 200)}`));
+        resolve(JSON.parse(t));
+      });
+    });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+async function uploadFile(filePath, contentType = 'image/jpeg', token = readToken()) {
+  const filename = path.basename(filePath);
+  const { id } = await call('POST', '/file_uploads', { filename, content_type: contentType }, token);
+  await throttle();
+  await sendMultipart(id, filename, contentType, fs.readFileSync(filePath), token);
+  return id;
+}
+
+const fileProp = (uploadId, name) => ({ files: [{ type: 'file_upload', file_upload: { id: uploadId }, name }] });
+
+module.exports = {
+  VERSION,
+  readToken,
+  call,
+  queryAll,
+  createDatabase,
+  resolveDataSource,
+  createRow,
+  updatePage,
+  appendBlocks,
+  createPage,
+  uploadFile,
+  fileProp,
+  text,
+  sleep,
+};

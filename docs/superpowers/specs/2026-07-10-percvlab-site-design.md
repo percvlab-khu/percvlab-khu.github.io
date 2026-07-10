@@ -130,23 +130,27 @@ Home과 Contact가 참조한다.
 **News** — Title(제목), Date(날짜), Published(체크박스). 본문은 페이지 블록.
 
 **Research Areas** — Title, Description, Image, Order.
+현행 사이트의 연구 소개는 항목이 아니라 서술형 문단 5개였다. 그 문단은 Site Config로 옮겼고,
+이 DB는 스키마만 두고 비워둔다. 항목화는 연구실이 직접 정의한다.
 
 **Members**
 
 | 속성 | 타입 | 비고 |
 |---|---|---|
 | Name | title | |
-| Role | select | Professor / PhD / MS / BS / Alumni |
+| Role | select | Professor / PhD / MS / BS |
+| Alumni | checkbox | Role과 분리한다 (졸업한 박사를 표현해야 하므로) |
 | Photo | files | 빌드 시 다운로드 |
 | Email, Interests | rich_text | |
-| Year | number | 입학연도 |
-| Graduated, Current Position | number, rich_text | Alumni 전용 |
-| Order | number | 같은 Role 내 정렬 |
+| Current Position | rich_text | 졸업생의 현재 소속 |
+| Graduated | number | 졸업 연도 |
+| Order | number | 정렬 |
 
-졸업 처리는 Role을 Alumni로 변경하는 것으로 끝난다.
+졸업 처리는 Alumni 체크박스를 켜는 것으로 끝난다. Role(학위)은 그대로 둔다.
 
-**Publications** — Title, Authors, Venue, Year(number), Type(select: Journal/Conference/Workshop),
-Link(url, 선택).
+**Publications** — Title, Authors, Venue, Year(number),
+Type(select: Journal/Conference/Workshop/Preprint), Link(url, 선택).
+Preprint는 arXiv 논문을 위한 것이며, 링크는 arXiv 식별자에서 자동 생성한다.
 
 **Photos** — Title, Date, Image, Caption.
 
@@ -265,11 +269,28 @@ Netlify 또는 Vercel로 이전 시:
 
 **1단계 — 계정 준비.** `docs/setup-accounts.md` 참조.
 
-**2단계 — 콘텐츠 이전 (일회성).** `tools/migrate-from-google-sites.js`가 현행 사이트를 파싱해
-Notion API로 밀어 넣는다. 대상: 논문 약 100편, 구성원 53명, 연구분야 8개.
+**2단계 — 콘텐츠 이전 (일회성, 완료).** `tools/migrate-from-google-sites.js`가 현행 사이트를 파싱하고,
+`tools/seed-notion.js`와 `tools/seed-notion-content.js`가 Notion API로 밀어 넣는다.
 
-**프로필 사진 53장은 반드시 지금 내려받는다.** Google Sites를 내리면 CDN URL이 죽는다.
-Archives 링크 21개는 `tools/archives-backup.json`으로 백업만 하고 사이트에 싣지 않는다.
+**프로필 사진은 반드시 먼저 내려받는다.** 실제로 2026-07-10 작업 중 Google Sites가 이미지 CDN을
+`lh3.googleusercontent.com/sitesv/`에서 `lh7-us.googleusercontent.com/sitesv-images-rt/`로 교체했다.
+하루도 지나지 않아 벌어진 일이다. 추출기는 두 호스트를 모두 인식하며, 프로필(`=w1280`)과
+로고(`=w16383`)를 크기 파라미터로 구분한다. `raw_*.html`을 커밋해 두고 `--offline`으로 재현한다.
+
+Archives는 하이퍼링크가 아니라 평문 목록이었다. `tools/out/archives-backup.json`에 백업만 하고
+사이트에 싣지 않는다.
+
+실제 결과:
+
+| 항목 | 결과 |
+|---|---|
+| 구성원 | 45명 (교수 1, 재학 14, 졸업생 30). 사진 42장, 3명은 원본도 기본 아바타 |
+| 논문 | 96편 (1999–2026). 랩 표기 "100+"는 반올림이었다 |
+| 공지 | 2건 |
+| Site Config | About 5문단, Contact 6줄 |
+
+검수가 필요한 두 가지: `M.S - Ph.D Course`(통합과정) 1명을 PhD로 넣었으나 원본은 석사로 셌다.
+`Ph.D Candidate` 2명의 재학/졸업 여부는 데이터로 판별할 수 없어 졸업으로 표시했다.
 
 **3단계 — 빌드 파이프라인 구현.** 완료 시 `percvlab-khu.github.io`에서 사이트 확인 가능.
 
