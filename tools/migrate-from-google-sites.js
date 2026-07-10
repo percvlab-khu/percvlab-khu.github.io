@@ -65,20 +65,28 @@ const inline = (html) => entities(html.replace(/<[^>]+>/g, '')).replace(/\s+/g, 
 const csvCell = (s) => `"${String(s).replace(/"/g, '""')}"`;
 const csvRow = (arr) => arr.map(csvCell).join(',');
 
-// 프로필 사진: aria-label 없는 sitesv 이미지. 로고는 aria-label="Site home".
+// Google Sites는 이미지 CDN 호스트와 경로를 예고 없이 바꾼다.
+// 2026-07-10 하루 사이에도 아래 두 형태가 모두 관측되었다.
+//   lh3.googleusercontent.com/sitesv/...
+//   lh7-us.googleusercontent.com/sitesv-images-rt/...
+// 그래서 호스트를 넓게 잡고, 프로필 사진은 크기 파라미터로 구분한다.
+// 프로필은 =w1280, 사이트 로고는 =w16383 으로 요청된다.
+const IMG_RE = /<img\s+src="(https:\/\/lh\d+(?:-[a-z]+)?\.googleusercontent\.com\/sitesv[^"]+)"([^>]*)>/g;
+
 function profileImages(html) {
   const out = [];
   const seen = new Set();
-  const re = /<img\s+src="(https:\/\/lh3\.googleusercontent\.com\/sitesv\/[^"]+)"([^>]*)>/g;
   let m;
-  while ((m = re.exec(html))) {
+  while ((m = IMG_RE.exec(html))) {
     const [, url, attrs] = m;
     if (/aria-label="Site home"/.test(attrs)) continue;
+    if (!/=w1280$/.test(url)) continue; // 로고·장식 이미지 제외
     const key = url.split('=')[0];
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ pos: m.index, url, original: `${key}=s0` });
   }
+  IMG_RE.lastIndex = 0;
   return out;
 }
 
@@ -111,7 +119,8 @@ function parseMember(lines) {
 
 // 재학생은 "M.S course" / "Ph.D Course" / "Undergraduate course",
 // 졸업생은 "M.S" / "Ph.D" / "B.S" 처럼 course가 빠진다.
-const isAlumni = (role) => !!role && !/course/i.test(role);
+// 지도교수는 역할 줄이 없어 parseMember가 'Professor'를 붙이므로 별도로 제외한다.
+const isAlumni = (role) => !!role && role !== 'Professor' && !/course/i.test(role);
 
 const JOURNAL = /Transactions|Journal|IEEE Access|Letters|Sensors|Neurocomputing|Applied Sciences|Remote Sensing|Electronics|Symmetry/i;
 
@@ -184,10 +193,20 @@ async function download(url, dest, fallback) {
 async function main() {
   fs.mkdirSync(path.join(OUT, 'images', 'members'), { recursive: true });
 
+  // --offline : 이미 받아둔 raw_*.html을 재사용한다.
+  // 원격 마크업이 바뀌어도 검증된 원본으로 결과를 재현할 수 있어야 한다.
+  const offline = process.argv.includes('--offline');
   const html = {};
   for (const p of PAGES) {
-    html[p] = await get(`${BASE}/${p}`);
-    console.log(`fetched /${p}  ${html[p].length} bytes`);
+    const cached = path.join(OUT, `raw_${p}.html`);
+    if (offline) {
+      if (!fs.existsSync(cached)) throw new Error(`--offline 인데 ${cached} 가 없다.`);
+      html[p] = fs.readFileSync(cached, 'utf8');
+      console.log(`cached  /${p}  ${html[p].length} bytes`);
+    } else {
+      html[p] = await get(`${BASE}/${p}`);
+      console.log(`fetched /${p}  ${html[p].length} bytes`);
+    }
   }
 
   // --- 구성원과 프로필 사진 ---
@@ -234,8 +253,8 @@ async function main() {
   const archives = parseArchives(html.archives);
   fs.writeFileSync(path.join(OUT, 'archives-backup.json'), JSON.stringify(archives, null, 2));
 
-  // 원본 HTML 보존
-  for (const p of PAGES) fs.writeFileSync(path.join(OUT, `raw_${p}.html`), html[p]);
+  // 원본 HTML 보존. 원격 마크업이 언제 바뀔지 모르므로 이 파일들이 유일한 재현 수단이다.
+  if (!offline) for (const p of PAGES) fs.writeFileSync(path.join(OUT, `raw_${p}.html`), html[p]);
 
   const noPhoto = members.filter((m) => placeholders.has(m.hash)).length;
   const byYear = pubs.reduce((a, p) => ((a[p.year] = (a[p.year] || 0) + 1), a), {});
