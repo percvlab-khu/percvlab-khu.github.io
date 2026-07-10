@@ -1,0 +1,264 @@
+/* PerCVLab — 경희대 컴퓨터비전 연구실
+   테마는 CSS 변수로만 갈린다. 색을 추가할 때는 반드시 두 테마 모두에 정의할 것. */
+
+:root {
+  --bg: #ffffff;
+  --surface: #f7f7f8;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --muted: #6b7280;
+  --accent: #9b1b30; /* 경희대 크림슨 */
+  --accent-soft: #f6e8ea;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px rgb(0 0 0 / 0.04);
+  --radius: 10px;
+  --wrap: 1080px;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0d0d0f;
+  --surface: #17171a;
+  --border: #2a2a30;
+  --text: #ececee;
+  --muted: #9a9aa2;
+  --accent: #e88a9a;
+  --accent-soft: #2a1a1e;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.3);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0d0d0f;
+    --surface: #17171a;
+    --border: #2a2a30;
+    --text: #ececee;
+    --muted: #9a9aa2;
+    --accent: #e88a9a;
+    --accent-soft: #2a1a1e;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.3);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; display: block; }
+
+.wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+
+.skip {
+  position: absolute; left: -9999px;
+}
+.skip:focus {
+  left: 12px; top: 12px; z-index: 100; padding: 10px 16px;
+  background: var(--accent); color: #fff; border-radius: 6px;
+}
+
+/* --- 헤더 --- */
+header.site {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+header.site .wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; min-height: 60px;
+}
+.brand { font-weight: 700; letter-spacing: -0.02em; color: var(--text); font-size: 1.05rem; }
+.brand:hover { text-decoration: none; }
+.brand span { color: var(--accent); }
+
+nav.site { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+nav.site a {
+  color: var(--muted); padding: 7px 11px; border-radius: 7px;
+  font-size: 0.92rem; font-weight: 500;
+}
+nav.site a:hover { background: var(--surface); color: var(--text); text-decoration: none; }
+nav.site a[aria-current='page'] { color: var(--text); background: var(--surface); }
+nav.site a.locked::after { content: ' 🔒'; font-size: 0.8em; }
+
+#theme-toggle {
+  background: none; border: 1px solid var(--border); color: var(--muted);
+  width: 34px; height: 34px; border-radius: 7px; cursor: pointer;
+  display: grid; place-items: center; font-size: 15px; line-height: 1;
+}
+#theme-toggle:hover { color: var(--text); border-color: var(--muted); }
+
+/* --- 본문 --- */
+main { padding: 56px 0 80px; }
+h1 { font-size: clamp(1.9rem, 1.3rem + 2vw, 2.6rem); letter-spacing: -0.03em; line-height: 1.2; margin: 0 0 8px; }
+h2 { font-size: 1.5rem; letter-spacing: -0.02em; margin: 56px 0 20px; }
+h3 { font-size: 1.15rem; margin: 32px 0 12px; }
+.lede { color: var(--muted); font-size: 1.1rem; margin: 0 0 40px; }
+
+.hero { padding: 24px 0 8px; }
+.hero .tagline { color: var(--accent); font-weight: 600; font-size: 0.9rem; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* --- 카드 --- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+
+/* --- 공지 --- */
+.news-item { padding: 18px 0; border-bottom: 1px solid var(--border); }
+.news-item:last-child { border-bottom: 0; }
+.news-item time { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.news-item h3 { margin: 4px 0 6px; font-size: 1.05rem; }
+.news-item p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+/* --- 구성원 --- */
+.member-grid {
+  display: grid; gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+.member {
+  text-align: center; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 22px 14px; transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.member:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.member img, .member .avatar {
+  width: 104px; height: 104px; border-radius: 50%; object-fit: cover;
+  margin: 0 auto 14px; border: 2px solid var(--border);
+}
+.member .avatar {
+  display: grid; place-items: center; background: var(--accent-soft);
+  color: var(--accent); font-size: 1.9rem; font-weight: 600;
+}
+.member .name { font-weight: 600; margin-bottom: 2px; }
+.member .role { color: var(--muted); font-size: 0.85rem; }
+.member .meta { color: var(--muted); font-size: 0.8rem; margin-top: 6px; }
+.member a { font-size: 0.8rem; word-break: break-all; }
+
+/* 교수는 넓게 */
+.member-grid.lead { grid-template-columns: 1fr; }
+.member-grid.lead .member { display: flex; align-items: center; gap: 26px; text-align: left; padding: 26px; }
+.member-grid.lead .member img, .member-grid.lead .member .avatar { margin: 0; flex: none; width: 128px; height: 128px; }
+@media (max-width: 560px) {
+  .member-grid.lead .member { flex-direction: column; text-align: center; }
+  .member-grid.lead .member img, .member-grid.lead .member .avatar { margin: 0 auto; }
+}
+
+/* 졸업생은 밀도 있게 */
+.alumni-list {
+  display: grid; gap: 10px 24px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  list-style: none; padding: 0; margin: 0;
+}
+.alumni-list li {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.93rem;
+}
+.alumni-list .who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.alumni-list img, .alumni-list .avatar {
+  width: 34px; height: 34px; border-radius: 50%; object-fit: cover;
+  flex: none; border: 1px solid var(--border);
+}
+.alumni-list .avatar {
+  display: grid; place-items: center; background: var(--accent-soft);
+  color: var(--accent); font-size: 0.72rem; font-weight: 600;
+}
+.alumni-list .role { color: var(--muted); font-size: 0.8rem; }
+.alumni-list .where { color: var(--muted); font-size: 0.85rem; text-align: right; flex: none; }
+
+/* --- 논문 --- */
+.pub-year { display: flex; align-items: baseline; gap: 14px; margin: 44px 0 14px; }
+.pub-year h2 { margin: 0; font-variant-numeric: tabular-nums; }
+.pub-year .count { color: var(--muted); font-size: 0.85rem; }
+
+.pub { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.pub:last-child { border-bottom: 0; }
+.pub .title { font-weight: 600; margin-bottom: 4px; }
+.pub .authors { color: var(--muted); font-size: 0.9rem; }
+.pub .venue { color: var(--muted); font-size: 0.9rem; font-style: italic; }
+
+.badge {
+  display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.03em;
+  padding: 2px 8px; border-radius: 999px; margin-left: 8px; vertical-align: 1px;
+  background: var(--accent-soft); color: var(--accent); text-transform: uppercase;
+}
+.badge.conference { background: var(--surface); color: var(--muted); }
+
+/* --- 사진 갤러리 --- */
+.photo-grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.photo-grid figure { margin: 0; }
+.photo-grid img { border-radius: var(--radius); border: 1px solid var(--border); aspect-ratio: 4/3; object-fit: cover; }
+.photo-grid figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; }
+
+/* --- 연락처 --- */
+.contact-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+/* --- Members Only 잠금 --- */
+.lock { max-width: 400px; margin: 60px auto; text-align: center; }
+.lock .icon { font-size: 2.4rem; margin-bottom: 12px; }
+.lock input {
+  width: 100%; padding: 12px 14px; margin: 18px 0 12px; font-size: 1rem;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+.lock input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lock button {
+  width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+}
+.lock button:disabled { opacity: 0.6; cursor: progress; }
+.lock .error { color: var(--accent); font-size: 0.9rem; min-height: 1.3em; margin-top: 10px; }
+.lock .hint { color: var(--muted); font-size: 0.85rem; margin-top: 20px; }
+
+.lab-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+.lab-toolbar button {
+  padding: 6px 14px; border-radius: 999px; cursor: pointer; font-size: 0.88rem;
+  background: var(--surface); color: var(--muted); border: 1px solid var(--border);
+}
+.lab-toolbar button[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+.lab-item { padding: 18px 0; border-bottom: 1px solid var(--border); }
+.lab-item .head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.lab-item time { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.lab-item .drive { font-size: 0.88rem; }
+
+/* --- 푸터 --- */
+footer.site {
+  border-top: 1px solid var(--border); padding: 32px 0;
+  color: var(--muted); font-size: 0.88rem;
+}
+footer.site .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* --- 본문 산문 (Notion 블록) --- */
+.prose p { margin: 0 0 16px; }
+.prose blockquote {
+  margin: 20px 0; padding: 4px 0 4px 18px;
+  border-left: 3px solid var(--accent); color: var(--muted);
+}
+.prose code {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 1px 5px; border-radius: 4px; font-size: 0.9em;
+}
+.prose pre {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px; overflow-x: auto;
+}
+.prose pre code { background: none; border: 0; padding: 0; }
+.prose hr { border: 0; border-top: 1px solid var(--border); margin: 32px 0; }
+
+/* 넓은 콘텐츠는 자기 안에서 스크롤한다. 페이지가 가로로 밀리면 안 된다. */
+.scroll-x { overflow-x: auto; }
+
+@media (max-width: 640px) {
+  main { padding: 36px 0 60px; }
+  h2 { margin-top: 40px; }
+  nav.site a { padding: 6px 8px; font-size: 0.88rem; }
+}
