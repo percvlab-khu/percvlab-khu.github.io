@@ -1,0 +1,94 @@
+name: Notion sync & deploy
+
+on:
+  schedule:
+    - cron: '0 */3 * * *' # 3시간마다
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'tools/**'
+      - '**.md'
+
+# 배포는 동시에 하나만. 진행 중인 배포를 취소하지 않는다.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: write # keepalive 커밋
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Notion 이미지는 URL이 1시간 뒤 만료되므로 빌드 때 내려받는다.
+      # 매니페스트에 last_edited_time을 기록해 바뀐 것만 다시 받는다.
+      - name: Restore image cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: notion-assets-${{ github.run_id }}
+          restore-keys: notion-assets-
+
+      - name: Build
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DB_IDS: ${{ secrets.NOTION_DB_IDS }}
+          NOTION_CONFIG_PAGE_ID: ${{ secrets.NOTION_CONFIG_PAGE_ID }}
+          LAB_PASSWORD: ${{ secrets.LAB_PASSWORD }}
+          # 학교 도메인 신청이 승인되면 아래 두 줄의 주석을 푼다.
+          # SITE_ORIGIN: https://cvlab.khu.ac.kr
+          # CUSTOM_DOMAIN: cvlab.khu.ac.kr
+        run: node scripts/build.js
+
+      - name: Verify output
+        run: |
+          test -f _site/index.html
+          test -f _site/members/index.html
+          test -f _site/publications/index.html
+          test -s _site/data/lab.enc.json
+          # 암호문에 평문이 새어나오지 않았는지 확인한다
+          ! grep -qi 'drive.google.com' _site/data/lab.enc.json
+          echo "산출물 $(find _site -type f | wc -l)개, $(du -sh _site | cut -f1)"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      # GitHub은 커밋이 60일간 없으면 예약 워크플로를 자동 비활성화한다.
+      # 이슈나 스타는 활동으로 쳐주지 않는다. 오직 커밋만 인정된다.
+      # 산출물을 커밋하지 않는 구조이므로, 50일마다 타임스탬프만 갱신한다.
+      - name: Keepalive
+        run: |
+          last=$(git log -1 --format=%ct)
+          days=$(( ( $(date +%s) - last ) / 86400 ))
+          echo "마지막 커밋 이후 ${days}일"
+          if [ "$days" -ge 50 ]; then
+            mkdir -p .github
+            date -u +%FT%TZ > .github/last-run
+            git config user.name  'notion-sync[bot]'
+            git config user.email 'notion-sync[bot]@users.noreply.github.com'
+            git add .github/last-run
+            git commit -m 'chore: keepalive (예약 워크플로 비활성화 방지)'
+            git push
+          fi
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

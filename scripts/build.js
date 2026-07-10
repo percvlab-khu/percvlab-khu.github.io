@@ -8,13 +8,18 @@
 const fs = require('fs');
 const path = require('path');
 const { fetchAll, IMG_DIR } = require('./fetch-notion');
+const { encryptLab } = require('./encrypt-lab');
 const pages = require('../templates/pages');
 
 const ROOT = path.join(__dirname, '..');
 const SITE = path.join(ROOT, '_site');
 const STATIC = path.join(ROOT, 'static');
 
-const DOMAIN = 'cvlab.khu.ac.kr';
+// CNAME 파일이 배포되는 순간 GitHub Pages는 그 도메인을 커스텀 도메인으로 잡는다.
+// DNS가 아직 준비되지 않았다면 github.io 주소마저 그리로 리다이렉트되어 사이트가 열리지 않는다.
+// 학교의 도메인 변경 신청이 승인된 뒤에 CUSTOM_DOMAIN을 설정할 것.
+const CUSTOM_DOMAIN = process.env.CUSTOM_DOMAIN || '';
+const ORIGIN = process.env.SITE_ORIGIN || 'https://percvlab-khu.github.io';
 
 const write = (rel, content) => {
   const dest = path.join(SITE, rel);
@@ -53,17 +58,22 @@ async function build(configPageId) {
   ];
   for (const [rel, html] of written) write(rel, html);
 
-  // Members Only는 encrypt-lab.js가 만든다. 여기서는 자리만 잡는다.
-  if (!fs.existsSync(path.join(SITE, 'lab', 'index.html'))) {
-    write('lab/index.html', '<!doctype html><title>Members Only</title><p>Not built yet.</p>');
+  // Members Only. 비밀번호가 없으면 만들지 않는다 — 빈 비밀번호로 배포되는 사고를 막는다.
+  let lab = null;
+  const password = process.env.LAB_PASSWORD;
+  if (password) {
+    lab = encryptLab(data.membersOnly, SITE, password);
+  } else {
+    console.warn('경고: LAB_PASSWORD가 없어 Members Only를 건너뛴다.');
+    write('lab/index.html', '<!doctype html><meta name="robots" content="noindex"><title>Members Only</title><p>Not built.</p>');
   }
 
   copyDir(path.join(STATIC, 'css'), path.join(SITE, 'assets', 'css'));
   copyDir(path.join(STATIC, 'js'), path.join(SITE, 'assets', 'js'));
   const imgs = copyDir(IMG_DIR, path.join(SITE, 'assets', 'img'));
 
-  write('CNAME', `${DOMAIN}\n`);
-  write('robots.txt', `User-agent: *\nDisallow: /lab/\n\nSitemap: https://${DOMAIN}/sitemap.xml\n`);
+  if (CUSTOM_DOMAIN) write('CNAME', `${CUSTOM_DOMAIN}\n`);
+  write('robots.txt', `User-agent: *\nDisallow: /lab/\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 
   const urls = ['/', '/members/', '/publications/', '/photos/', '/contact/'];
   const today = new Date().toISOString().slice(0, 10);
@@ -71,12 +81,12 @@ async function build(configPageId) {
     'sitemap.xml',
     `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((u) => `  <url><loc>https://${DOMAIN}${u}</loc><lastmod>${today}</lastmod></url>`).join('\n')}
+${urls.map((u) => `  <url><loc>${ORIGIN}${u}</loc><lastmod>${today}</lastmod></url>`).join('\n')}
 </urlset>
 `
   );
 
-  return { data, imgs, pages: written.length };
+  return { data, imgs, pages: written.length, origin: ORIGIN, customDomain: CUSTOM_DOMAIN, lab };
 }
 
 module.exports = { build, SITE };
@@ -84,10 +94,13 @@ module.exports = { build, SITE };
 if (require.main === module) {
   const pageId = process.argv[2] || process.env.NOTION_CONFIG_PAGE_ID;
   build(pageId)
-    .then(({ data, imgs, pages: n }) => {
+    .then(({ data, imgs, pages: n, origin, customDomain, lab }) => {
       console.log(`페이지 ${n}개, 이미지 ${imgs}장 -> _site/`);
       console.log(`  구성원 ${data.members.length} / 논문 ${data.publications.length} / 공지 ${data.news.length}`);
       console.log(`  이미지 캐시 적중 ${data.stats.hits} / 새로 받음 ${data.stats.misses}`);
+      console.log(`  origin ${origin}`);
+      console.log(`  CNAME  ${customDomain || '(없음 — github.io로 배포)'}`);
+      console.log(`  lab    ${lab ? `${lab.count}개 글, 암호문 ${lab.bytes}B` : '건너뜀'}`);
     })
     .catch((e) => {
       console.error('빌드 실패:', e.message);

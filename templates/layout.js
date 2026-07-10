@@ -4,7 +4,10 @@ const { esc } = require('../scripts/notion-to-html');
 
 const SITE = 'PerCVLab';
 const FULL = 'Perception & Computer Vision Lab, Kyung Hee University';
-const ORIGIN = 'https://cvlab.khu.ac.kr';
+
+// 학교에 도메인 변경 신청이 승인되기 전까지는 github.io 주소로 배포한다.
+// 승인 후 SITE_ORIGIN과 CUSTOM_DOMAIN을 설정하면 canonical·sitemap·CNAME이 함께 바뀐다.
+const ORIGIN = process.env.SITE_ORIGIN || 'https://percvlab-khu.github.io';
 
 const NAV = [
   { href: '/', label: 'Home' },
