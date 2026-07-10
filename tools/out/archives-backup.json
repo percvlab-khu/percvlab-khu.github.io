@@ -1,1 +1,26 @@
-[]
+[
+  "MoreHome",
+  "Sutton and Barto. Reinforcement Learning: An Introduction. Covers Markov decision processes and reinforcement learning.",
+  "CVPapers - Computer Vision Resource",
+  "Computer Vision Conferences by USC IRIS",
+  "[CVPR] IEEE Internationl Conference on Computer Vision and Pattern Recognition",
+  "[ICCV] IEEE Internationl Conference on Computer Vision",
+  "[ECCV] European Conference on Computer Vision",
+  "[NIPS] Neural Information Processing Systems Conference",
+  "[SIGGRAPH] International Conference on Computer Graphics and Interactive Techniques",
+  "[MICCAI] Inter. Conf. on Medical Image Computing and Computer Assisted Intervention",
+  "[ACCV] Asian Conference on Computer Vision",
+  "[BMVC] British Machine Vision Conference",
+  "[WACV] IEEE Winter Conference on Applications of Computer Vision",
+  "[ICIP] IEEE International Conference on Image Processing",
+  "[ICPR] Internationl Conference on Pattern Recognition",
+  "[TPAMI] IEEE Transactions on Pattern Analysis and Machine Intelligence",
+  "[IJCV] International Journal of Computer Vision",
+  "[TIP] IEEE Transactions on Image Processing",
+  "[TCSVT] IEEE Transactions on Circuits and Systems for Video Technology",
+  "[TMI] IEEE Transactions on Medical Imaging",
+  "[CVIU] Elsevier Computer Vision and Image Understanding",
+  "[PR] Elsevier Pattern Recognition",
+  "[IVC] Elsevier Image and Vision Computing",
+  "[SPL] IEEE Signal Processing Letters"
+]
