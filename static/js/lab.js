@@ -32,11 +32,55 @@
   const fmt = (iso) =>
     iso ? new Date(iso).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 
+  const UNSORTED = '기타';
+
+  // 글 하나를 그린다.
+  function article(item) {
+    const art = document.createElement('article');
+    art.className = 'lab-item';
+
+    const head = document.createElement('div');
+    head.className = 'head';
+
+    const h = document.createElement('h3');
+    h.textContent = item.title;
+
+    const time = document.createElement('time');
+    time.textContent = [fmt(item.date), item.author].filter(Boolean).join(' · ');
+
+    head.append(h, time);
+    art.append(head);
+
+    if (item.html) {
+      const body = document.createElement('div');
+      body.className = 'prose';
+      body.innerHTML = item.html; // 빌드 시점에 이스케이프된 HTML이다
+      art.append(body);
+    }
+
+    if (item.driveLink) {
+      const p = document.createElement('p');
+      p.className = 'drive';
+      const a = document.createElement('a');
+      a.href = item.driveLink;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = '📎 첨부파일 (Google Drive)';
+      p.append(a);
+      art.append(p);
+    }
+    return art;
+  }
+
   function render(data) {
     const items = data.items;
     $('summary').textContent = `${items.length}개의 글`;
 
-    const used = data.categories.filter((c) => items.some((i) => i.category === c));
+    // Notion에 정의된 순서대로 섹션을 세우고, 분류가 없는 글은 뒤에 모은다.
+    const order = [...data.categories, UNSORTED];
+    const groupOf = (i) => (data.categories.includes(i.category) ? i.category : UNSORTED);
+    const used = order.filter((c) => items.some((i) => groupOf(i) === c));
+
     let active = null;
 
     const filters = $('filters');
@@ -55,53 +99,33 @@
     function draw() {
       filters.replaceChildren(makeBtn('전체', null), ...used.map((c) => makeBtn(c, c)));
 
-      const list = active ? items.filter((i) => i.category === active) : items;
       const box = $('items');
       box.replaceChildren();
 
-      if (!list.length) {
+      const shown = active ? [active] : used;
+      for (const cat of shown) {
+        const list = items.filter((i) => groupOf(i) === cat);
+        if (!list.length) continue;
+
+        const section = document.createElement('section');
+        section.className = 'lab-section';
+
+        const h = document.createElement('h2');
+        h.textContent = cat;
+        const n = document.createElement('span');
+        n.className = 'count';
+        n.textContent = `(${list.length})`;
+        h.append(' ', n);
+
+        section.append(h, ...list.map(article));
+        box.append(section);
+      }
+
+      if (!box.children.length) {
         const p = document.createElement('p');
         p.className = 'lede';
         p.textContent = '글이 없습니다.';
         box.append(p);
-        return;
-      }
-
-      for (const item of list) {
-        const art = document.createElement('article');
-        art.className = 'lab-item';
-
-        const head = document.createElement('div');
-        head.className = 'head';
-
-        const h = document.createElement('h3');
-        h.textContent = item.title;
-
-        const time = document.createElement('time');
-        time.textContent = [item.category, fmt(item.date), item.author].filter(Boolean).join(' · ');
-
-        head.append(h, time);
-        art.append(head);
-
-        if (item.html) {
-          const body = document.createElement('div');
-          body.className = 'prose';
-          body.innerHTML = item.html; // 빌드 시점에 이스케이프된 HTML이다
-          art.append(body);
-        }
-
-        if (item.driveLink) {
-          const p = document.createElement('p');
-          p.className = 'drive';
-          const a = document.createElement('a');
-          a.href = item.driveLink;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.textContent = '📎 첨부파일 (Google Drive)';
-          p.append(a);
-          art.append(p);
-        }
-        box.append(art);
       }
     }
 

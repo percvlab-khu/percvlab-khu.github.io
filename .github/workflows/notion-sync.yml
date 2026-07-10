@@ -25,16 +25,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
 
       # Notion 이미지는 URL이 1시간 뒤 만료되므로 빌드 때 내려받는다.
       # 매니페스트에 last_edited_time을 기록해 바뀐 것만 다시 받는다.
       - name: Restore image cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache
           key: notion-assets-${{ github.run_id }}
@@ -61,7 +61,7 @@ jobs:
           ! grep -qi 'drive.google.com' _site/data/lab.enc.json
           echo "산출물 $(find _site -type f | wc -l)개, $(du -sh _site | cut -f1)"
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
@@ -91,4 +91,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

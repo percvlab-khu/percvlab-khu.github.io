@@ -143,7 +143,8 @@ async function fetchAll(configPageId) {
     const photos = await cache.fetch(r.id, r.last_edited_time, V.files(r.properties.Photo).slice(0, 1));
     members.push({
       name: V.title(r.properties.Name),
-      role: V.select(r.properties.Role),
+      role: V.select(r.properties.Role), // 그룹핑·정렬용
+      roleDetail: V.text(r.properties['Role Detail']), // 화면에 보여줄 원본 표기
       alumni: V.check(r.properties.Alumni),
       email: V.email(r.properties.Email),
       interests: V.text(r.properties.Interests),

@@ -15,7 +15,7 @@ jobs:
   remind:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v9
         with:
           script: |
             const title = `Members Only 비밀번호 교체 검토 (${new Date().getFullYear()})`;

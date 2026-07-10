@@ -33,8 +33,12 @@ function sections(blocks) {
   return out;
 }
 
-const ROLE_LABEL = { Professor: 'Professor', PhD: 'Ph.D. Course', MS: 'M.S. Course', BS: 'Undergraduate' };
+// Role은 그룹핑 기준일 뿐이다. 개인의 과정 표기는 Role Detail에 있다
+// ("M.S.–Ph.D. Integrated Course", "Ph.D. Candidate" 등).
+const GROUP_LABEL = { Professor: 'Professor', PhD: 'Ph.D. Course', MS: 'M.S. Course', BS: 'Undergraduate' };
 const ROLE_ORDER = ['PhD', 'MS', 'BS'];
+
+const roleOf = (m) => m.roleDetail || GROUP_LABEL[m.role] || m.role || '';
 
 // --- Home ---
 function home({ siteConfig, news }) {
@@ -77,18 +81,22 @@ function members({ members: all }) {
   const alumni = all.filter((m) => m.alumni);
   const prof = current.filter((m) => m.role === 'Professor');
 
+  // 사진과 텍스트를 각각 하나의 덩어리로 묶는다. 그래야 교수 카드처럼 가로로 눕혔을 때
+  // 이름·역할·이메일이 제각각 flex 아이템으로 흩어지지 않는다.
   const card = (m) => `<div class="member">
       ${avatar(m)}
-      <div class="name">${esc(m.name)}</div>
-      <div class="role">${esc(ROLE_LABEL[m.role] || m.role || '')}</div>
-      ${m.interests ? `<div class="meta">${esc(m.interests)}</div>` : ''}
-      ${m.email ? `<a href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : ''}
+      <div class="info">
+        <div class="name">${esc(m.name)}</div>
+        <div class="role">${esc(roleOf(m))}</div>
+        ${m.interests ? `<div class="meta">${esc(m.interests)}</div>` : ''}
+        ${m.email ? `<a class="mail" href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : ''}
+      </div>
     </div>`;
 
   const groups = ROLE_ORDER.map((role) => {
     const list = current.filter((m) => m.role === role);
     if (!list.length) return '';
-    return `<h2>${ROLE_LABEL[role]} <span class="count">(${list.length})</span></h2>
+    return `<h2>${GROUP_LABEL[role]} <span class="count">(${list.length})</span></h2>
     <div class="member-grid">${list.map(card).join('')}</div>`;
   }).join('\n');
 
@@ -96,7 +104,7 @@ function members({ members: all }) {
   const alumniRow = (m) => `<li>
       <span class="who">
         ${m.photo ? `<img src="${IMG(m.photo)}" alt="" width="34" height="34" loading="lazy">` : `<span class="avatar" aria-hidden="true">${esc(initials(m.name))}</span>`}
-        <span>${esc(m.name)} <span class="role">${esc(m.role || '')}</span></span>
+        <span>${esc(m.name)} <span class="role">${esc(roleOf(m))}</span></span>
       </span>
       <span class="where">${esc(m.position || '')}</span>
     </li>`;
