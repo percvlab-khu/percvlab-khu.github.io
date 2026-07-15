@@ -18,6 +18,17 @@ const avatar = (m) =>
     ? `<img src="${IMG(m.photo)}" alt="${esc(m.name)}" width="104" height="104" loading="lazy">`
     : `<div class="avatar" aria-hidden="true">${esc(initials(m.name))}</div>`;
 
+// 이메일을 하이퍼링크 없이, 그리고 봇이 소스에서 긁기 어렵게 렌더한다.
+// @ 와 . 을 별도 요소로 분리하고 CSS ::before 로 기호를 되살린다.
+// 화면에는 온전한 주소로 보이고 복사도 되지만, HTML 소스에는 완성된 주소가 없다.
+function obfuscateEmail(email) {
+  const [user, domain] = email.split('@');
+  if (!domain) return esc(email);
+  const dparts = domain.split('.').map(esc);
+  const dom = dparts.map((p, i) => (i === 0 ? p : `<i class="d"></i>${p}`)).join('');
+  return `<span class="email" translate="no">${esc(user)}<i class="at"></i>${dom}</span>`;
+}
+
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '');
 
 // Site Config는 heading_2 로 구분된 섹션들이다. 제목으로 잘라 쓴다.
@@ -89,7 +100,7 @@ function members({ members: all }) {
         <div class="name">${esc(m.name)}</div>
         <div class="role">${esc(roleOf(m))}</div>
         ${m.interests ? `<div class="meta">${esc(m.interests)}</div>` : ''}
-        ${m.email ? `<a class="mail" href="mailto:${esc(m.email)}">${esc(m.email)}</a>` : ''}
+        ${m.email ? `<div class="mail">${obfuscateEmail(m.email)}</div>` : ''}
       </div>
     </div>`;
 

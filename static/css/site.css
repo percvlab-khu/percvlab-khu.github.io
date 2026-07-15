@@ -143,9 +143,15 @@ h3 { font-size: 1.15rem; margin: 32px 0 12px; }
 .member .role { color: var(--muted); font-size: 0.85rem; }
 .member .meta { color: var(--muted); font-size: 0.8rem; margin-top: 6px; }
 .member .mail {
-  display: inline-block; margin-top: 8px; font-size: 0.8rem;
+  margin-top: 8px; font-size: 0.8rem; color: var(--muted);
   overflow-wrap: anywhere; /* break-all과 달리 필요할 때만 단어를 끊는다 */
 }
+
+/* 이메일 난독화: @ 와 . 을 CSS로 되살린다. 소스에는 완성된 주소가 없다.
+   ::before 문자열은 사용자가 복사할 때도 함께 복사된다. */
+.email { unicode-bidi: bidi-override; }
+.email .at::before { content: '@'; }
+.email .d::before { content: '.'; }
 
 /* 교수는 가로로 눕힌다 */
 .member-grid.lead { grid-template-columns: 1fr; }
