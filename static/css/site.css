@@ -89,6 +89,20 @@ nav.site a:hover { background: var(--surface); color: var(--text); text-decorati
 nav.site a[aria-current='page'] { color: var(--text); background: var(--surface); }
 nav.site a.locked::after { content: ' 🔒'; font-size: 0.8em; }
 
+/* 잠금 해제 후 상단 내비가 카테고리 메뉴로 바뀐다 */
+.lab-nav-link {
+  background: none; border: 0; cursor: pointer; font: inherit;
+  color: var(--muted); padding: 7px 11px; border-radius: 7px;
+  font-size: 0.92rem; font-weight: 500;
+}
+.lab-nav-link:hover { background: var(--surface); color: var(--text); }
+.lab-nav-link[aria-current='page'] { color: var(--accent); background: var(--accent-soft); }
+.lab-nav-back {
+  color: var(--muted); padding: 7px 11px; border-radius: 7px;
+  font-size: 0.92rem; font-weight: 500; margin-right: 4px;
+}
+.lab-nav-back:hover { background: var(--surface); color: var(--text); text-decoration: none; }
+
 #theme-toggle {
   background: none; border: 1px solid var(--border); color: var(--muted);
   width: 34px; height: 34px; border-radius: 7px; cursor: pointer;

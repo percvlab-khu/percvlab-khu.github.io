@@ -154,9 +154,42 @@
     return details;
   }
 
+  // 잠금을 풀면 상단 내비게이션을 카테고리 메뉴로 교체한다.
+  // 테마 토글 버튼은 theme.js가 이미 리스너를 걸어두었으므로 노드를 그대로 둔다.
+  function installCategoryNav(used, onSelect) {
+    const nav = document.querySelector('nav.site');
+    const toggle = document.getElementById('theme-toggle');
+    if (!nav) return null;
+
+    nav.querySelectorAll('a, button:not(#theme-toggle)').forEach((el) => el.remove());
+    nav.classList.add('lab-nav');
+
+    const links = new Map();
+    const add = (label, value) => {
+      const a = document.createElement('button');
+      a.type = 'button';
+      a.className = 'lab-nav-link';
+      a.textContent = label;
+      a.addEventListener('click', () => onSelect(value));
+      links.set(value, a);
+      if (toggle) nav.insertBefore(a, toggle);
+      else nav.append(a);
+    };
+
+    const back = document.createElement('a');
+    back.href = '/';
+    back.className = 'lab-nav-back';
+    back.textContent = '← Site';
+    if (toggle) nav.insertBefore(back, toggle);
+    else nav.append(back);
+
+    add('전체', null);
+    used.forEach((c) => add(c, c));
+    return links;
+  }
+
   function render(data) {
     const items = data.items;
-    $('summary').textContent = `${items.length}개의 글`;
 
     // Notion에 정의된 순서대로 섹션을 세우고, 분류가 없는 글은 뒤에 모은다.
     const order = [...data.categories, UNSORTED];
@@ -165,21 +198,21 @@
 
     let active = null;
 
-    const filters = $('filters');
-    const makeBtn = (label, value) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = label;
-      b.setAttribute('aria-pressed', String(active === value));
-      b.addEventListener('click', () => {
-        active = value;
-        draw();
-      });
-      return b;
+    const select = (value) => {
+      active = value;
+      draw();
     };
+    const navLinks = installCategoryNav(used, select);
+
+    $('filters').hidden = true; // 필터 역할은 상단 내비로 옮겼다
 
     function draw() {
-      filters.replaceChildren(makeBtn('전체', null), ...used.map((c) => makeBtn(c, c)));
+      if (navLinks) {
+        for (const [value, el] of navLinks) el.setAttribute('aria-current', value === active ? 'page' : 'false');
+      }
+
+      const count = active ? items.filter((i) => groupOf(i) === active).length : items.length;
+      $('summary').textContent = active ? `${active} · ${count}개의 글` : `전체 ${count}개의 글`;
 
       const box = $('items');
       box.replaceChildren();
