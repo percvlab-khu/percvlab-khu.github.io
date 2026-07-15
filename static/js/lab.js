@@ -74,28 +74,39 @@
 
   const UNSORTED = '기타';
 
-  // 글 하나를 그린다.
+  // 글 하나를 접이식 항목으로 그린다. 제목 줄을 누르면 본문이 펼쳐진다.
+  // <details>를 쓰면 키보드·스크린리더 지원과 열고닫기가 공짜로 따라온다.
   function article(item) {
-    const art = document.createElement('article');
-    art.className = 'lab-item';
+    const details = document.createElement('details');
+    details.className = 'lab-item';
 
-    const head = document.createElement('div');
-    head.className = 'head';
-
-    const h = document.createElement('h3');
+    const summary = document.createElement('summary');
+    const h = document.createElement('span');
+    h.className = 'lab-title';
     h.textContent = item.title;
 
     const time = document.createElement('time');
     time.textContent = [fmt(item.date), item.author].filter(Boolean).join(' · ');
 
-    head.append(h, time);
-    art.append(head);
+    // 첨부/Drive가 있으면 접힌 상태에서도 표시로 알려준다.
+    const marks = [];
+    if (item.attachments && item.attachments.length) marks.push(`📎${item.attachments.length}`);
+    if (item.driveLink) marks.push('🔗');
+    const badge = document.createElement('span');
+    badge.className = 'lab-marks';
+    badge.textContent = marks.join(' ');
+
+    summary.append(h, badge, time);
+    details.append(summary);
+
+    const body = document.createElement('div');
+    body.className = 'lab-body';
 
     if (item.html) {
-      const body = document.createElement('div');
-      body.className = 'prose';
-      body.innerHTML = item.html; // 빌드 시점에 이스케이프된 HTML이다
-      art.append(body);
+      const prose = document.createElement('div');
+      prose.className = 'prose';
+      prose.innerHTML = item.html; // 빌드 시점에 이스케이프된 HTML이다
+      body.append(prose);
     }
 
     // 암호화된 첨부파일. 클릭할 때 그 파일만 받아 복호화한다.
@@ -117,7 +128,7 @@
         li.append(btn, size);
         ul.append(li);
       }
-      art.append(ul);
+      body.append(ul);
     }
 
     if (item.driveLink) {
@@ -129,9 +140,18 @@
       a.rel = 'noopener noreferrer';
       a.textContent = '📎 Google Drive에서 열기';
       p.append(a);
-      art.append(p);
+      body.append(p);
     }
-    return art;
+
+    if (!body.children.length) {
+      const p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = '내용이 없습니다.';
+      body.append(p);
+    }
+
+    details.append(body);
+    return details;
   }
 
   function render(data) {

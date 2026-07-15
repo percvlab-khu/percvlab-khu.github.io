@@ -243,12 +243,31 @@ h3 { font-size: 1.15rem; margin: 32px 0 12px; }
 .lab-section:first-child h2 { margin-top: 24px; }
 .lab-section h2 .count { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
 
-.lab-item { padding: 18px 0; border-bottom: 1px solid var(--border); }
+.lab-item { border-bottom: 1px solid var(--border); }
 .lab-section .lab-item:last-child { border-bottom: 0; }
-.lab-item .head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
-.lab-item h3 { margin: 0; font-size: 1.05rem; }
+
+.lab-item > summary {
+  display: flex; align-items: center; gap: 12px;
+  padding: 15px 8px 15px 28px; position: relative; cursor: pointer;
+  list-style: none; border-radius: 8px;
+}
+.lab-item > summary::-webkit-details-marker { display: none; } /* 기본 삼각형 제거 */
+.lab-item > summary::before {
+  content: '›'; position: absolute; left: 8px;
+  color: var(--muted); font-size: 1.1rem; line-height: 1;
+  transition: transform 0.15s ease;
+}
+.lab-item[open] > summary::before { transform: rotate(90deg); }
+.lab-item > summary:hover { background: var(--surface); }
+.lab-item > summary:hover .lab-title { color: var(--accent); }
+
+.lab-title { font-weight: 600; font-size: 1.02rem; flex: 1; min-width: 0; }
+.lab-marks { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
 .lab-item time { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.lab-item .drive { font-size: 0.88rem; margin: 10px 0 0; }
+
+.lab-body { padding: 0 8px 20px 28px; }
+.lab-body .muted { color: var(--muted); font-style: italic; }
+.lab-item .drive { font-size: 0.88rem; margin: 12px 0 0; }
 
 .attachments { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 6px; }
 .attachments li { display: flex; align-items: center; gap: 10px; }
